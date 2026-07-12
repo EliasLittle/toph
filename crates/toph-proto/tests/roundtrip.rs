@@ -14,7 +14,7 @@ fn test_hello() -> Hello {
 
 fn make_video_frame(seq: u64, is_key: bool) -> MediaFrame {
     MediaFrame {
-        timestamp_us: seq * 33_333, // ~30fps
+        timestamp_us: seq * 33_333,
         is_key,
         data: vec![seq as u8; 128],
     }
@@ -22,7 +22,7 @@ fn make_video_frame(seq: u64, is_key: bool) -> MediaFrame {
 
 fn make_audio_frame(seq: u64) -> MediaFrame {
     MediaFrame {
-        timestamp_us: seq * 20_000, // 50Hz = 20ms chunks
+        timestamp_us: seq * 20_000,
         is_key: false,
         data: vec![seq as u8; 40],
     }
@@ -30,26 +30,38 @@ fn make_audio_frame(seq: u64) -> MediaFrame {
 
 #[tokio::test]
 async fn two_endpoints_exchange_frames() {
-    const N: usize = 20; // frames to send each way per media type
+    const N: usize = 20;
 
     let session_a = Session::spawn().await.expect("session A");
     let session_b = Session::spawn().await.expect("session B");
 
     let ticket = session_a.ticket().await.expect("ticket");
 
-    // Connect B → A and accept on A, concurrently.
-    let (call_a, call_b) = tokio::join!(
-        session_a.accept(test_hello()),
-        session_b.connect(&ticket, test_hello()),
-    );
-    let mut call_a = call_a.expect("accept");
-    let mut call_b = call_b.expect("connect");
+    // Acceptor and dialler must run concurrently: dial() blocks waiting for
+    // Accept, which only arrives after wait_for_ring() + incoming.accept().
+    //
+    // session_a is returned from the task so its Endpoint stays alive for the
+    // duration of the test — dropping the Session closes the endpoint and
+    // terminates all connections.
+    let accept_task = tokio::spawn(async move {
+        let incoming = session_a.wait_for_ring().await.expect("wait_for_ring");
+        let call = incoming.accept(test_hello()).await.expect("accept");
+        (call, session_a)
+    });
 
-    // Verify that both sides received each other's Hello.
+    let call_b = session_b
+        .dial(&ticket, test_hello())
+        .await
+        .expect("dial")
+        .expect("call was rejected");
+
+    let (mut call_a, _session_a) = accept_task.await.expect("acceptor panicked");
+    let mut call_b = call_b;
+
     assert!(matches!(call_a.remote_hello.video.codec, VideoCodec::Vp8));
     assert!(matches!(call_b.remote_hello.video.codec, VideoCodec::Vp8));
 
-    // Send N video frames A→B and B→A concurrently, then receive them.
+    // Send N video frames A→B and B→A concurrently.
     let send_video_a = async {
         for i in 0..N as u64 {
             call_a.send.video.send(&make_video_frame(i, i == 0)).await.unwrap();
@@ -70,7 +82,7 @@ async fn two_endpoints_exchange_frames() {
         assert_eq!(f.data[0], i as u8);
     }
 
-    // Send N audio frames B→A concurrently.
+    // Send N audio frames B→A.
     let send_audio_b = async {
         for i in 0..N as u64 {
             call_b.send.audio.send(&make_audio_frame(i)).await.unwrap();

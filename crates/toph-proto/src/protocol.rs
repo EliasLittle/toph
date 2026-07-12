@@ -8,6 +8,20 @@ pub const ALPN: &[u8] = b"toph/0";
 /// Hard cap on any single framed message to prevent OOM from a malicious peer.
 pub const MAX_MESSAGE_SIZE: u32 = 2 * 1024 * 1024; // 2 MiB
 
+// ── Signalling ───────────────────────────────────────────────────────────────
+
+/// Sent at the very start of the control stream, before Hello.
+/// Implements the ring/accept/reject call-setup handshake.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SignalMessage {
+    /// Dialler → recipient: "I'd like to call you."
+    Ring,
+    /// Recipient → dialler: "Accepted."
+    Accept,
+    /// Recipient → dialler: "Rejected."
+    Reject,
+}
+
 // ── Negotiation types ────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

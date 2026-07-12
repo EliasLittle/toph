@@ -3243,6 +3243,7 @@ dependencies = [
  "futures",
  "getrandom 0.3.4",
  "iroh",
+ "iroh-base",
  "js-sys",
  "serde_json",
  "toph-proto",
