@@ -1,4 +1,4 @@
 /target/
-/web/src/wasm/
+# web/src/wasm/ is committed so Vercel can build without Rust installed
 /web/node_modules/
 /web/dist/
