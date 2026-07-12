@@ -1,11 +1,11 @@
 import { defineConfig } from 'vite';
 
+const crossOriginHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+};
+
 export default defineConfig({
-  server: {
-    // Required for SharedArrayBuffer / cross-origin isolation if needed later.
-    headers: {
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
-    },
-  },
+  server:  { headers: crossOriginHeaders },
+  preview: { headers: crossOriginHeaders },
 });

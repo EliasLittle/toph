@@ -47,15 +47,80 @@
     }
     button:hover { background: #1d4ed8; }
     button:disabled { background: #333; color: #666; cursor: not-allowed; }
+    button.active { background: #b45309; }
+    button.active:hover { background: #92400e; }
+    button.danger { background: #dc2626; }
+    button.danger:hover { background: #b91c1c; }
+
+    #call-controls {
+      display: none;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    #call-controls.visible { display: flex; }
+
+    /* Incoming call overlay */
+    #incoming-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    #incoming-overlay.visible { display: flex; }
+    #incoming-card {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 2rem 2.5rem;
+      text-align: center;
+      min-width: 260px;
+    }
+    #incoming-card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.4rem;
+    }
+    #incoming-card p {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 1.5rem;
+    }
+    #incoming-card .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    #status-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
 
     #status {
-      margin: 1rem 0;
+      flex: 1;
       padding: 0.5rem 0.75rem;
       background: #1e1e1e;
       border-left: 3px solid #2563eb;
       border-radius: 0 4px 4px 0;
       font-size: 0.85rem;
     }
+
+    #conn-badge {
+      display: none;
+      font-size: 0.7rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    #conn-badge.direct  { display: inline; background: #14532d; color: #86efac; }
+    #conn-badge.relay   { display: inline; background: #713f12; color: #fde68a; }
+    #conn-badge.unknown { display: inline; background: #1e1e1e; color: #666; }
 
     .videos {
       display: grid;
@@ -79,6 +144,13 @@
       display: block;
     }
 
+    /* Mirror the local preview so it feels like looking in a mirror.
+       The encoded stream sent to the peer is NOT mirrored — this is
+       purely a local display transform. */
+    #local-video {
+      transform: scaleX(-1);
+    }
+
     #log {
       margin-top: 1rem;
       background: #111;
@@ -94,6 +166,18 @@
   </style>
 </head>
 <body>
+  <!-- Incoming call overlay -->
+  <div id="incoming-overlay">
+    <div id="incoming-card">
+      <h2>Incoming Call</h2>
+      <p>A peer wants to video call you.</p>
+      <div class="btn-row">
+        <button id="accept-btn">Accept</button>
+        <button id="reject-btn" class="danger">Reject</button>
+      </div>
+    </div>
+  </div>
+
   <h1>Toph — P2P Video Stream</h1>
 
   <div class="ticket-row">
@@ -108,7 +192,16 @@
     <button id="connect-btn" disabled>Connect</button>
   </div>
 
-  <div id="status">Initialising…</div>
+  <div id="status-row">
+    <div id="status">Initialising…</div>
+    <span id="conn-badge"></span>
+  </div>
+
+  <div id="call-controls">
+    <button id="mute-btn">Mute Mic</button>
+    <button id="camera-btn">Stop Camera</button>
+    <button id="end-btn" class="danger">End Call</button>
+  </div>
 
   <div class="videos">
     <div class="video-box">

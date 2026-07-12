@@ -4,14 +4,22 @@ import { startPlayback } from './playback.js';
 
 // ── UI refs ───────────────────────────────────────────────────────────────────
 
-const myTicketEl   = document.getElementById('my-ticket');
-const peerTicketEl = document.getElementById('peer-ticket');
-const connectBtn   = document.getElementById('connect-btn');
-const copyBtn      = document.getElementById('copy-btn');
-const statusEl     = document.getElementById('status');
-const remoteCanvas = document.getElementById('remote-canvas');
-const localVideo   = document.getElementById('local-video');
-const logEl        = document.getElementById('log');
+const myTicketEl      = document.getElementById('my-ticket');
+const peerTicketEl    = document.getElementById('peer-ticket');
+const connectBtn      = document.getElementById('connect-btn');
+const copyBtn         = document.getElementById('copy-btn');
+const statusEl        = document.getElementById('status');
+const remoteCanvas    = document.getElementById('remote-canvas');
+const localVideo      = document.getElementById('local-video');
+const logEl           = document.getElementById('log');
+const callControls    = document.getElementById('call-controls');
+const muteBtn         = document.getElementById('mute-btn');
+const cameraBtn       = document.getElementById('camera-btn');
+const endBtn          = document.getElementById('end-btn');
+const incomingOverlay = document.getElementById('incoming-overlay');
+const acceptBtn       = document.getElementById('accept-btn');
+const rejectBtn       = document.getElementById('reject-btn');
+const connBadge       = document.getElementById('conn-badge');
 
 function setStatus(msg) {
   statusEl.textContent = msg;
@@ -40,19 +48,71 @@ async function startup() {
   const ticket = await session.ticket();
   myTicketEl.value = ticket;
   connectBtn.disabled = false;
-  setStatus('Ready — copy your ticket and share it, or paste a peer ticket to call.');
+  setStatus('Ready — copy your ticket and share it, or paste a peer ticket to dial.');
 
-  armAccept();
+  armRing();
 }
 
-async function armAccept() {
-  log('Waiting for incoming call…');
-  try {
-    const call = await session.accept(640, 480);
-    await onCallEstablished(call);
-  } catch (e) {
-    setStatus(`Accept error: ${e.message}`);
+// ── Connection type badge ─────────────────────────────────────────────────────
+
+function setConnBadge(type) {
+  connBadge.className = type;
+  connBadge.textContent =
+    type === 'direct' ? '⬤ Direct' :
+    type === 'relay'  ? '⬤ Relay'  : '';
+}
+
+function startConnectionPoller(call) {
+  let stopped = false;
+  const nodeId = call.remote_node_id();
+
+  async function poll() {
+    if (stopped) return;
+    const type = await session.connection_type(nodeId);
+    setConnBadge(type);
+    setTimeout(poll, 3000);
   }
+
+  poll();
+  return () => { stopped = true; connBadge.className = ''; connBadge.textContent = ''; };
+}
+
+// ── Incoming call loop ────────────────────────────────────────────────────────
+
+async function armRing() {
+  log('Listening for incoming calls…');
+  try {
+    const incoming = await session.wait_for_ring();
+    showIncomingCall(incoming);
+  } catch (e) {
+    setStatus(`Ring listener error: ${e.message}`);
+  }
+}
+
+function showIncomingCall(incoming) {
+  incomingOverlay.classList.add('visible');
+  setStatus('Incoming call — accept or reject.');
+
+  acceptBtn.onclick = async () => {
+    incomingOverlay.classList.remove('visible');
+    connectBtn.disabled = true;
+    setStatus('Accepting call…');
+    try {
+      const call = await incoming.accept(640, 480);
+      await onCallEstablished(call);
+    } catch (e) {
+      setStatus(`Accept failed: ${e.message}`);
+      connectBtn.disabled = false;
+      armRing();
+    }
+  };
+
+  rejectBtn.onclick = async () => {
+    incomingOverlay.classList.remove('visible');
+    setStatus('Call rejected.');
+    try { await incoming.reject(); } catch (_) {}
+    armRing();
+  };
 }
 
 // ── Call setup ────────────────────────────────────────────────────────────────
@@ -61,34 +121,69 @@ async function onCallEstablished(call) {
   activeCall = call;
   setStatus(`In call — remote ${call.remote_width()}×${call.remote_height()}`);
 
-  // Wire decoded remote media → canvas + speakers.
   startPlayback(call, remoteCanvas);
 
   let captureStream = null;
+  const stopPoller = startConnectionPoller(call);
 
-  call.on_close(() => {
-    setStatus('Call ended.');
+  function teardown() {
+    stopPoller();
+    callControls.classList.remove('visible');
+    connectBtn.disabled = false;
     activeCall = null;
     if (captureStream) {
       captureStream.getTracks().forEach(t => t.stop());
       captureStream = null;
       localVideo.srcObject = null;
     }
-    // Clear the remote canvas.
     remoteCanvas.getContext('2d').clearRect(0, 0, remoteCanvas.width, remoteCanvas.height);
-    // Re-arm so a new call can come in without a page reload.
-    armAccept();
+    localVideo.style.opacity = '1';
+    armRing();
+  }
+
+  call.on_close(() => {
+    setStatus('Call ended.');
+    teardown();
   });
 
-  // Start camera + mic → VP8 / Opus → call.send_video / send_audio.
-  // This also registers call.on_keyframe_request so the encoder responds
-  // when the remote decoder needs a fresh keyframe.
   try {
     captureStream = await startCapture(call, localVideo);
     log('Camera and microphone active.');
   } catch (e) {
     log(`Capture unavailable: ${e.message} (remote video still displays)`);
   }
+
+  callControls.classList.add('visible');
+
+  muteBtn.textContent = 'Mute Mic';
+  muteBtn.classList.remove('active');
+  cameraBtn.textContent = 'Stop Camera';
+  cameraBtn.classList.remove('active');
+
+  muteBtn.onclick = () => {
+    if (!captureStream) return;
+    const track = captureStream.getAudioTracks()[0];
+    if (!track) return;
+    track.enabled = !track.enabled;
+    const muted = !track.enabled;
+    muteBtn.textContent = muted ? 'Unmute Mic' : 'Mute Mic';
+    muteBtn.classList.toggle('active', muted);
+  };
+
+  cameraBtn.onclick = () => {
+    if (!captureStream) return;
+    const track = captureStream.getVideoTracks()[0];
+    if (!track) return;
+    track.enabled = !track.enabled;
+    const stopped = !track.enabled;
+    cameraBtn.textContent = stopped ? 'Start Camera' : 'Stop Camera';
+    cameraBtn.classList.toggle('active', stopped);
+    localVideo.style.opacity = stopped ? '0.15' : '1';
+  };
+
+  endBtn.onclick = () => {
+    if (activeCall) activeCall.hang_up();
+  };
 }
 
 // ── UI handlers ───────────────────────────────────────────────────────────────
@@ -98,12 +193,17 @@ connectBtn.addEventListener('click', async () => {
   if (!ticket) return;
 
   connectBtn.disabled = true;
-  setStatus('Connecting…');
+  setStatus('Dialling…');
   try {
-    const call = await session.connect(ticket, 640, 480);
+    const call = await session.dial(ticket, 640, 480);
+    if (call === null || call === undefined) {
+      setStatus('Call rejected by peer.');
+      connectBtn.disabled = false;
+      return;
+    }
     await onCallEstablished(call);
   } catch (e) {
-    setStatus(`Connect failed: ${e.message}`);
+    setStatus(`Dial failed: ${e.message}`);
     connectBtn.disabled = false;
   }
 });

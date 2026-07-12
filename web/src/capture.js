@@ -36,7 +36,7 @@ export async function startCapture(call, localVideoEl) {
     codec: 'vp8',
     width: 640,
     height: 480,
-    bitrate: 600_000,
+    bitrate: 1_500_000,   // 1.5 Mbps — reduces color banding vs 600 kbps
     framerate: 30,
     latencyMode: 'realtime',
   });
