@@ -1,2 +1,6 @@
 [target.wasm32-unknown-unknown]
 rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
+
+[env]
+# ring's C build requires LLVM clang (Apple clang lacks WASM targets).
+CC_wasm32_unknown_unknown = "/usr/local/opt/llvm/bin/clang"

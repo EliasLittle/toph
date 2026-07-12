@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toph — P2P Streaming</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      padding: 2rem;
+    }
+
+    h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
+
+    .ticket-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+
+    label { font-size: 0.85rem; color: #aaa; min-width: 100px; }
+
+    input[type="text"] {
+      flex: 1;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #e0e0e0;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.75rem;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 0.4rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+    #status {
+      margin: 1rem 0;
+      padding: 0.5rem 0.75rem;
+      background: #1e1e1e;
+      border-left: 3px solid #2563eb;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.85rem;
+    }
+
+    .videos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .video-box { position: relative; }
+    .video-label {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 0.4rem;
+    }
+
+    canvas, video {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #111;
+      border-radius: 6px;
+      display: block;
+    }
+
+    #log {
+      margin-top: 1rem;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 0.5rem;
+      font-family: monospace;
+      font-size: 0.7rem;
+      height: 140px;
+      overflow-y: auto;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>Toph — P2P Video Stream</h1>
+
+  <div class="ticket-row">
+    <label>Your ticket</label>
+    <input type="text" id="my-ticket" readonly placeholder="starting…" />
+    <button id="copy-btn">Copy</button>
+  </div>
+
+  <div class="ticket-row">
+    <label>Peer ticket</label>
+    <input type="text" id="peer-ticket" placeholder="paste peer ticket here" />
+    <button id="connect-btn" disabled>Connect</button>
+  </div>
+
+  <div id="status">Initialising…</div>
+
+  <div class="videos">
+    <div class="video-box">
+      <div class="video-label">Remote</div>
+      <canvas id="remote-canvas" width="640" height="480"></canvas>
+    </div>
+    <div class="video-box">
+      <div class="video-label">Local preview</div>
+      <video id="local-video" autoplay muted playsinline></video>
+    </div>
+  </div>
+
+  <div id="log"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
