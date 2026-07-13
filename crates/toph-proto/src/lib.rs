@@ -7,6 +7,6 @@ pub use call::{Call, CallRecv, CallSend, AudioRecvStream, AudioSendStream,
                VideoSendStream};
 pub use protocol::{AudioCodec, AudioParams, ControlMessage, Hello, MediaFrame,
                    MediaKind, VideoCodec, VideoParams, ALPN};
-pub use session::{ConnectionType, IncomingCall, Session};
+pub use session::{ConnectionDebugInfo, ConnectionType, IncomingCall, Session};
 
 pub type Result<T> = anyhow::Result<T>;

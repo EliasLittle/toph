@@ -20,6 +20,7 @@ const incomingOverlay = document.getElementById('incoming-overlay');
 const acceptBtn       = document.getElementById('accept-btn');
 const rejectBtn       = document.getElementById('reject-btn');
 const connBadge       = document.getElementById('conn-badge');
+const debugToggleBtn  = document.getElementById('debug-toggle');
 
 function setStatus(msg) {
   statusEl.textContent = msg;
@@ -31,6 +32,44 @@ function log(msg) {
   line.textContent = `${new Date().toLocaleTimeString()} ${msg}`;
   logEl.appendChild(line);
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ── Debug mode ────────────────────────────────────────────────────────────────
+
+let debugMode = false;
+
+debugToggleBtn.addEventListener('click', () => {
+  debugMode = !debugMode;
+  debugToggleBtn.classList.toggle('active', debugMode);
+  debugToggleBtn.textContent = debugMode ? 'Debug ON' : 'Debug';
+});
+
+function debugLog(msg) {
+  if (!debugMode) return;
+  const line = document.createElement('div');
+  line.className = 'debug-line';
+  line.textContent = `${new Date().toLocaleTimeString()} [debug] ${msg}`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function formatConnDebug(info) {
+  const parts = [`path=${info.conn_type}`];
+  const relayUrl = info.relay_active[0] ?? info.relay_idle[0];
+  if (relayUrl) {
+    try { parts.push(`relay=${new URL(relayUrl).hostname}`); } catch (_) {}
+  }
+  if (info.conn_type !== 'direct') {
+    const n = info.direct_idle.length;
+    if (n > 0) {
+      parts.push(`${n} direct candidate${n > 1 ? 's' : ''} (idle) — hole-punch not established`);
+    } else {
+      parts.push('no direct candidates — CGNAT or UDP blocked');
+    }
+  } else {
+    if (info.direct_active[0]) parts.push(`via ${info.direct_active[0]}`);
+  }
+  return parts.join(' | ');
 }
 
 // ── Session ───────────────────────────────────────────────────────────────────
@@ -70,6 +109,12 @@ function startConnectionPoller(call) {
     if (stopped) return;
     const type = await session.connection_type(nodeId);
     setConnBadge(type);
+    if (debugMode) {
+      const raw = await session.connection_debug_info(nodeId);
+      if (raw) {
+        try { debugLog(formatConnDebug(JSON.parse(raw))); } catch (_) {}
+      }
+    }
     setTimeout(poll, 3000);
   }
 
@@ -121,13 +166,14 @@ async function onCallEstablished(call) {
   activeCall = call;
   setStatus(`In call — remote ${call.remote_width()}×${call.remote_height()}`);
 
-  startPlayback(call, remoteCanvas);
+  let stopPlayback = startPlayback(call, remoteCanvas);
 
   let captureStream = null;
   const stopPoller = startConnectionPoller(call);
 
   function teardown() {
     stopPoller();
+    if (stopPlayback) { stopPlayback(); stopPlayback = null; }
     callControls.classList.remove('visible');
     connectBtn.disabled = false;
     activeCall = null;
@@ -135,6 +181,7 @@ async function onCallEstablished(call) {
       captureStream.getTracks().forEach(t => t.stop());
       captureStream = null;
       localVideo.srcObject = null;
+      localVideo.load();
     }
     remoteCanvas.getContext('2d').clearRect(0, 0, remoteCanvas.width, remoteCanvas.height);
     localVideo.style.opacity = '1';

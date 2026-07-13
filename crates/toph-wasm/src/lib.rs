@@ -88,6 +88,18 @@ impl TophSession {
         Ok(result.map(TophCall::new))
     }
 
+    /// Returns a JSON string with detailed path diagnostics, or "" if no info yet.
+    pub async fn connection_debug_info(&self, node_id_hex: String) -> String {
+        use std::str::FromStr;
+        let Ok(id) = EndpointId::from_str(&node_id_hex) else {
+            return String::new();
+        };
+        match self.0.connection_debug_info(id).await {
+            Some(info) => serde_json::to_string(&info).unwrap_or_default(),
+            None => String::new(),
+        }
+    }
+
     /// Returns "direct", "relay", or "unknown" for the active path to `node_id_hex`.
     pub async fn connection_type(&self, node_id_hex: String) -> String {
         use std::str::FromStr;

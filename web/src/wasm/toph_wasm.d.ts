@@ -88,6 +88,10 @@ export class TophSession {
     free(): void;
     [Symbol.dispose](): void;
     /**
+     * Returns a JSON string with detailed path diagnostics, or "" if no info yet.
+     */
+    connection_debug_info(node_id_hex: string): Promise<string>;
+    /**
      * Returns "direct", "relay", or "unknown" for the active path to `node_id_hex`.
      */
     connection_type(node_id_hex: string): Promise<string>;
@@ -135,6 +139,7 @@ export interface InitOutput {
     readonly tophcall_send_video: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly tophincomingcall_accept: (a: number, b: number, c: number) => any;
     readonly tophincomingcall_reject: (a: number) => any;
+    readonly tophsession_connection_debug_info: (a: number, b: number, c: number) => any;
     readonly tophsession_connection_type: (a: number, b: number, c: number) => any;
     readonly tophsession_create: () => any;
     readonly tophsession_dial: (a: number, b: number, c: number, d: number, e: number) => any;

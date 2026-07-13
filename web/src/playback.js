@@ -115,4 +115,10 @@ export function startPlayback(call, canvas) {
       console.error('[audio decode]', e);
     }
   });
+
+  return function stop() {
+    try { videoDecoder.close(); } catch (_) {}
+    try { audioDecoder.close(); } catch (_) {}
+    actx.close();
+  };
 }

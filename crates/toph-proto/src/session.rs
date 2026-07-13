@@ -74,6 +74,35 @@ impl Session {
         }
     }
 
+    /// Returns detailed diagnostic info about the path to `remote_id`.
+    /// Returns `None` if iroh has no info for that peer yet.
+    pub async fn connection_debug_info(&self, remote_id: EndpointId) -> Option<ConnectionDebugInfo> {
+        let info = self.endpoint.remote_info(remote_id).await?;
+
+        let mut direct_active = vec![];
+        let mut direct_idle = vec![];
+        let mut relay_active = vec![];
+        let mut relay_idle = vec![];
+
+        for a in info.addrs() {
+            let active = matches!(a.usage(), iroh::endpoint::TransportAddrUsage::Active);
+            match a.addr() {
+                TransportAddr::Ip(sock) => {
+                    if active { direct_active.push(sock.to_string()); }
+                    else { direct_idle.push(sock.to_string()); }
+                }
+                TransportAddr::Relay(url) => {
+                    if active { relay_active.push(url.to_string()); }
+                    else { relay_idle.push(url.to_string()); }
+                }
+                _ => {}
+            }
+        }
+
+        let conn_type = if !direct_active.is_empty() { "direct" } else { "relay" }.to_string();
+        Some(ConnectionDebugInfo { conn_type, relay_active, relay_idle, direct_active, direct_idle })
+    }
+
     /// Returns whether the active path to `remote_id` is direct or relay-assisted.
     /// Returns `None` if iroh has no info for that peer (not yet connected, or
     /// no active path).
@@ -132,6 +161,22 @@ pub enum ConnectionType {
     Direct,
     /// Traffic is relayed through iroh's relay server.
     Relay,
+}
+
+// ── ConnectionDebugInfo ───────────────────────────────────────────────────────
+
+#[derive(Debug, serde::Serialize)]
+pub struct ConnectionDebugInfo {
+    /// "direct" or "relay".
+    pub conn_type: String,
+    /// Relay URLs currently carrying traffic.
+    pub relay_active: Vec<String>,
+    /// Relay URLs known but not currently used.
+    pub relay_idle: Vec<String>,
+    /// Direct IP:port addresses currently carrying traffic.
+    pub direct_active: Vec<String>,
+    /// Direct IP:port addresses known but hole-punch not (yet) established.
+    pub direct_idle: Vec<String>,
 }
 
 // ── IncomingCall ──────────────────────────────────────────────────────────────

@@ -151,8 +151,31 @@
       transform: scaleX(-1);
     }
 
-    #log {
+    #log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       margin-top: 1rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .log-label {
+      font-size: 0.75rem;
+      color: #555;
+    }
+
+    #debug-toggle {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #555;
+    }
+    #debug-toggle:hover { background: #2a2a2a; color: #888; }
+    #debug-toggle.active { background: #713f12; border-color: #92400e; color: #fde68a; }
+    #debug-toggle.active:hover { background: #854d0e; }
+
+    #log {
       background: #111;
       border: 1px solid #222;
       border-radius: 4px;
@@ -163,6 +186,8 @@
       overflow-y: auto;
       color: #888;
     }
+
+    .debug-line { color: #4b5563; }
   </style>
 </head>
 <body>
@@ -214,6 +239,10 @@
     </div>
   </div>
 
+  <div id="log-header">
+    <span class="log-label">Event log</span>
+    <button id="debug-toggle">Debug</button>
+  </div>
   <div id="log"></div>
 
   <script type="module" src="/src/main.js"></script>

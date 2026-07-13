@@ -18,6 +18,7 @@ export const tophcall_send_audio: (a: number, b: number, c: number, d: number) =
 export const tophcall_send_video: (a: number, b: number, c: number, d: number, e: number) => void;
 export const tophincomingcall_accept: (a: number, b: number, c: number) => any;
 export const tophincomingcall_reject: (a: number) => any;
+export const tophsession_connection_debug_info: (a: number, b: number, c: number) => any;
 export const tophsession_connection_type: (a: number, b: number, c: number) => any;
 export const tophsession_create: () => any;
 export const tophsession_dial: (a: number, b: number, c: number, d: number, e: number) => any;
