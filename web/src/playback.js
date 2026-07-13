@@ -66,6 +66,10 @@ export function startPlayback(call, canvas) {
   const actx = new AudioContext({ sampleRate: 48000 });
   actx.resume();
 
+  // Single gain node used as the deafen switch — set gain to 0 to silence output.
+  const gainNode = actx.createGain();
+  gainNode.connect(actx.destination);
+
   // Self-clocking scheduler: each decoded buffer is scheduled back-to-back
   // on the AudioContext timeline. A 60 ms jitter buffer absorbs network jitter
   // without introducing noticeable delay.
@@ -86,7 +90,7 @@ export function startPlayback(call, canvas) {
 
       const src = actx.createBufferSource();
       src.buffer = buf;
-      src.connect(actx.destination);
+      src.connect(gainNode);
 
       // If we've fallen behind (gap in arrival), jump nextTime forward so
       // we don't schedule a burst of buffers all at once.
@@ -116,9 +120,14 @@ export function startPlayback(call, canvas) {
     }
   });
 
-  return function stop() {
-    try { videoDecoder.close(); } catch (_) {}
-    try { audioDecoder.close(); } catch (_) {}
-    actx.close();
+  return {
+    stop() {
+      try { videoDecoder.close(); } catch (_) {}
+      try { audioDecoder.close(); } catch (_) {}
+      actx.close();
+    },
+    setDeafened(deafened) {
+      gainNode.gain.value = deafened ? 0 : 1;
+    },
   };
 }

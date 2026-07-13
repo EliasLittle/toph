@@ -188,6 +188,40 @@
     }
 
     .debug-line { color: #4b5563; }
+
+    /* Settings */
+    #settings-btn {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #888;
+      padding: 0.4rem 0.7rem;
+    }
+    #settings-btn:hover { background: #2a2a2a; color: #aaa; }
+    #settings-btn.active { background: #1e3a5f; border-color: #2563eb; color: #93c5fd; }
+
+    #settings-panel {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 0.5rem;
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+    }
+    #settings-panel.visible { display: flex; }
+    #settings-panel label { min-width: auto; font-size: 0.8rem; }
+
+    select {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #e0e0e0;
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    select:focus { outline: none; border-color: #2563eb; }
   </style>
 </head>
 <body>
@@ -215,6 +249,17 @@
     <label>Peer ticket</label>
     <input type="text" id="peer-ticket" placeholder="paste peer ticket here" />
     <button id="connect-btn" disabled>Connect</button>
+    <button id="settings-btn">⚙ Settings</button>
+  </div>
+
+  <div id="settings-panel">
+    <label>Resolution</label>
+    <select id="resolution-select">
+      <option value="320x240">320×240 (Low)</option>
+      <option value="640x480" selected>640×480 (Standard)</option>
+      <option value="1280x720">1280×720 (HD)</option>
+      <option value="1920x1080">1920×1080 (Full HD)</option>
+    </select>
   </div>
 
   <div id="status-row">
@@ -225,6 +270,7 @@
   <div id="call-controls">
     <button id="mute-btn">Mute Mic</button>
     <button id="camera-btn">Stop Camera</button>
+    <button id="deafen-btn">Deafen</button>
     <button id="end-btn" class="danger">End Call</button>
   </div>
 

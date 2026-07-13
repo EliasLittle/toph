@@ -15,12 +15,16 @@ const logEl           = document.getElementById('log');
 const callControls    = document.getElementById('call-controls');
 const muteBtn         = document.getElementById('mute-btn');
 const cameraBtn       = document.getElementById('camera-btn');
+const deafenBtn       = document.getElementById('deafen-btn');
 const endBtn          = document.getElementById('end-btn');
 const incomingOverlay = document.getElementById('incoming-overlay');
 const acceptBtn       = document.getElementById('accept-btn');
 const rejectBtn       = document.getElementById('reject-btn');
 const connBadge       = document.getElementById('conn-badge');
 const debugToggleBtn  = document.getElementById('debug-toggle');
+const settingsBtn     = document.getElementById('settings-btn');
+const settingsPanel   = document.getElementById('settings-panel');
+const resolutionSelect = document.getElementById('resolution-select');
 
 function setStatus(msg) {
   statusEl.textContent = msg;
@@ -32,6 +36,18 @@ function log(msg) {
   line.textContent = `${new Date().toLocaleTimeString()} ${msg}`;
   logEl.appendChild(line);
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+settingsBtn.addEventListener('click', () => {
+  settingsPanel.classList.toggle('visible');
+  settingsBtn.classList.toggle('active', settingsPanel.classList.contains('visible'));
+});
+
+function getResolution() {
+  const [w, h] = resolutionSelect.value.split('x').map(Number);
+  return [w, h];
 }
 
 // ── Debug mode ────────────────────────────────────────────────────────────────
@@ -143,7 +159,8 @@ function showIncomingCall(incoming) {
     connectBtn.disabled = true;
     setStatus('Accepting call…');
     try {
-      const call = await incoming.accept(640, 480);
+      const [w, h] = getResolution();
+      const call = await incoming.accept(w, h);
       await onCallEstablished(call);
     } catch (e) {
       setStatus(`Accept failed: ${e.message}`);
@@ -166,14 +183,14 @@ async function onCallEstablished(call) {
   activeCall = call;
   setStatus(`In call — remote ${call.remote_width()}×${call.remote_height()}`);
 
-  let stopPlayback = startPlayback(call, remoteCanvas);
+  let playback = startPlayback(call, remoteCanvas);
 
   let captureStream = null;
   const stopPoller = startConnectionPoller(call);
 
   function teardown() {
     stopPoller();
-    if (stopPlayback) { stopPlayback(); stopPlayback = null; }
+    if (playback) { playback.stop(); playback = null; }
     callControls.classList.remove('visible');
     connectBtn.disabled = false;
     activeCall = null;
@@ -206,6 +223,8 @@ async function onCallEstablished(call) {
   muteBtn.classList.remove('active');
   cameraBtn.textContent = 'Stop Camera';
   cameraBtn.classList.remove('active');
+  deafenBtn.textContent = 'Deafen';
+  deafenBtn.classList.remove('active');
 
   muteBtn.onclick = () => {
     if (!captureStream) return;
@@ -228,6 +247,12 @@ async function onCallEstablished(call) {
     localVideo.style.opacity = stopped ? '0.15' : '1';
   };
 
+  deafenBtn.onclick = () => {
+    const deafened = deafenBtn.classList.toggle('active');
+    deafenBtn.textContent = deafened ? 'Undeafen' : 'Deafen';
+    playback?.setDeafened(deafened);
+  };
+
   endBtn.onclick = () => {
     if (activeCall) activeCall.hang_up();
   };
@@ -242,7 +267,8 @@ connectBtn.addEventListener('click', async () => {
   connectBtn.disabled = true;
   setStatus('Dialling…');
   try {
-    const call = await session.dial(ticket, 640, 480);
+    const [w, h] = getResolution();
+    const call = await session.dial(ticket, w, h);
     if (call === null || call === undefined) {
       setStatus('Call rejected by peer.');
       connectBtn.disabled = false;
